@@ -1,0 +1,18 @@
+proxmox_host_api = {
+  proxmox_ip          = "10.10.10.10"
+  proxmox_port        = "8006"
+  pm_api_token_id     = "token-id-user"
+  pm_api_token_secret = "token-secret"
+  target_node         = "pve"
+}
+ostemplate = "local:vztmpl/CentOS-Stream-8-rootfs.tar.xz"
+
+rootfs = {
+  size    = "8G"
+  storage = "local-lvm"
+}
+
+hostname        = "ansible.domain.com"
+host_password   = "supersecret"
+hardware_addr   = "AA:00:04:00:01:01" # I use for managing IP addresses/DNS via DHCP
+ssh_public_keys = "./static/authorized_keys"

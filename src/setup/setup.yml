@@ -1,0 +1,93 @@
+---
+- hosts: all
+  become: yes
+  tasks:
+    - name: Wait up to 600 seconds for target connection to become reachable/usable
+      ansible.builtin.wait_for_connection:
+
+    - name: Check wheel group exists
+      ansible.builtin.group:
+        name: wheel
+        state: present
+
+    - name: Passwordless sudo for wheel group
+      ansible.builtin.lineinfile:
+        dest: /etc/sudoers
+        state: present
+        regexp: '^%wheel'
+        line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'
+
+    - name: Copy SSHD configuration
+      ansible.builtin.copy:
+        src: sshd_config
+        dest: /etc/ssh/sshd_config
+        owner: root
+        group: root
+        mode: 0644
+
+    # - name: Harden crypto
+    # Breaks EPEL repo currently
+    #   ansible.builtin.shell: update-crypto-policies --set FUTURE
+
+    - name: Restart SSHD service
+      ansible.builtin.systemd:
+        name: sshd
+        state: restarted
+        enabled: yes
+
+    - name: Install DNF auto upgrades
+      ansible.builtin.dnf:
+        name: dnf-automatic
+        state: present
+
+    - name: Create DNF Automatic Install directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: 0644
+      loop:
+        - '/etc/systemd/system/dnf-automatic-install.timer.d'
+        - '/etc/systemd/system/dnf-automatic-install.service.d'
+
+    - name: Copy DNF automatic timer configuration
+      ansible.builtin.copy:
+        src: time.conf
+        dest: /etc/systemd/system/dnf-automatic-install.timer.d/time.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Copy DNF automatic timer configuration
+      ansible.builtin.copy:
+        src: autoreboot.conf
+        dest: /etc/systemd/system/dnf-automatic-install.service.d/autoreboot.conf
+        owner: root
+        group: root
+        mode: 0644
+
+    - name: Enable DNF automatic service
+      ansible.builtin.systemd:
+        name: dnf-automatic-install.timer
+        state: started
+        daemon_reload: yes
+        enabled: yes
+
+    - name: Install EPEL
+      ansible.builtin.dnf:
+        name: epel-release
+        state: present
+
+    - name: Install Ansible
+      ansible.builtin.dnf:
+        name: ansible
+        state: present
+
+    # - name: Example clone of a single branch
+    #   ansible.builtin.git:
+    #     repo: https://github.com/ansible/ansible-examples.git
+    #     dest: /src/ansible-examples
+    #     single_branch: yes
+    #     version: master
